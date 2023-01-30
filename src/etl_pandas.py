@@ -7,11 +7,15 @@ import logging
 from neo4j.exceptions import ServiceUnavailable
 
 class Neo4jConnection:
+
+    URI = "bolt://localhost:7687"
+    USER = "neo4j"
+    PWD = "12345678"
     
-    def __init__(self, uri, user, pwd):
-        self.__uri = uri
-        self.__user = user
-        self.__pwd = pwd
+    def __init__(self):
+        self.__uri = Neo4jConnection.URI
+        self.__user = Neo4jConnection.USER
+        self.__pwd = Neo4jConnection.PWD
         self.__driver = None
         try:
             self.__driver = GraphDatabase.driver(self.__uri, auth=(self.__user, self.__pwd))
@@ -205,31 +209,7 @@ def load_topics(conn, topics):
             RETURN count(*) as total
             '''
     return conn.query(query, parameters = {'rows':topics.to_dict('records')})
-
-
-def batch_insertion(conn, query, rows, batch_size):
-    """
     
-    
-    """
-    total = 0
-    batch = 0
-    start = time.time()
-    result = None
-    
-    while batch * batch_size < len(rows):
-
-        res = conn.query(query, 
-                         parameters = {'rows': rows[batch*batch_size:(batch+1)*batch_size].to_dict('records')})
-        total += res[0]['total']
-        batch += 1
-        result = {"total":total, 
-                  "batches":batch, 
-                  "time":time.time()-start}
-        print(result)
-        
-    return result
-
 
 def load_publications(conn, publications):
     """
@@ -309,14 +289,8 @@ def load_incomming_publications(conn, incomming_publications):
 
 
 if __name__ == "__main__":
-    # creates the connection instance
-    #uri = "neo4j+s://a9da35cf.databases.neo4j.io"
-    #user = "neo4j"
-    #password = "GSjX8_0lZKgJCIqDHAHYyqJa5kYFtSRUrEMiWb-QIsE" 
-    uri = "bolt://localhost:7687"
-    user = "neo4j"
-    password = "12345678"
-    conn = Neo4jConnection(uri, user, password)
+
+    conn = Neo4jConnection()
 
     # get cleaned authors, publications, and incomming publications
     authors, publications, incomming_publications = cleaned_authors_publications() 

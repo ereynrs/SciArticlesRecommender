@@ -1,0 +1,1 @@
+CREATE (:Author {id: "Integer", full_name: "String", `h-index`: "Integer", research_sector: "Integer"})-[:WRITES]->(:Publication {id: "Integer", publication_year: "Integer", doi: "String", status: "String"})-[:IS_ABOUT]->(:Topic {id: "Integer", name: "string"})
