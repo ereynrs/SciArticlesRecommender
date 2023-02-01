@@ -1,18 +1,23 @@
 import pandas as pd
 import re
-import time
 
 from neo4j import GraphDatabase
-import logging
-from neo4j.exceptions import ServiceUnavailable
 
 class Neo4jConnection:
+    """ Provides the methods to run queries against a given Neo4j db.
+    
+    """
 
+    # credentials
     URI = "bolt://localhost:7687"
     USER = "neo4j"
     PWD = "12345678"
     
     def __init__(self):
+        """ Default contructor.
+        
+        """
+        
         self.__uri = Neo4jConnection.URI
         self.__user = Neo4jConnection.USER
         self.__pwd = Neo4jConnection.PWD
@@ -23,10 +28,25 @@ class Neo4jConnection:
             print("Failed to create the driver:", e)
         
     def close(self):
+        """ Close the connection to the db.
+        
+
+        """
         if self.__driver is not None:
             self.__driver.close()
         
     def query(self, query, parameters=None, db=None):
+        """ Runs a query 
+        
+        Args.
+            query (string) - Cypher query.
+            parameters (object) -  Parameters of the query.
+            db (object) - db to run the query.
+        
+        Returns.
+            Query response.
+        """
+
         assert self.__driver is not None, "Driver not initialized!"
         session = None
         response = None
@@ -42,10 +62,10 @@ class Neo4jConnection:
 
 
 def get_authors():
-    """
+    """ Retrieve and process data about authors serialized in CSV file.
     
-    
     """
+
     authors = pd.read_csv('data/authors.csv')
     
     # streamline column names
@@ -59,10 +79,11 @@ def get_authors():
 
 
 def get_topics():
-    """
+    """ Retrieve and process data about topics serialized in CSV file.
+    Only topics mentioned in the published and incoming publications are loaded.
     
-    
     """
+
     topics = pd.read_csv('data/topics.csv')
     
     # streamline column names
@@ -76,10 +97,10 @@ def get_topics():
 
     # get publications data
     publications = get_publications()
-    incomming_publications = get_incomming_publications()
+    incoming_publications = get_incoming_publications()
 
-    # creates a set of the publications topics (both published and incomming ones)
-    pub_topics = set(pd.concat([publications, incomming_publications]).topic_list.explode())
+    # creates a set of the publications topics (both published and incoming ones)
+    pub_topics = set(pd.concat([publications, incoming_publications]).topic_list.explode())
 
     # only get details of topics mentioned on publications
     pub_topic_details = topics[topics.topic_id.apply(lambda x: x in pub_topics)]
@@ -88,10 +109,10 @@ def get_topics():
 
 
 def get_publications():
-    """
+    """ Retrieve and process data about publications serialized in CSV file. 
     
-    
     """
+
     publications = pd.read_csv('data/publications.csv')
     
     # streamline column names
@@ -109,41 +130,45 @@ def get_publications():
     return publications
 
 
-def get_incomming_publications():
-    """
+def get_incoming_publications():
+    """ Retrieve and process data about incoming publications serialized in CSV file.
     
-    
     """
-    incomming_publications = pd.read_csv('data/incomming_publications.csv')
+
+    incoming_publications = pd.read_csv('data/incoming_publications.csv')
     
     # streamline column names
-    incomming_publications.columns = ['publication_id', 'author_list', 'topic_list', 'publication_year', 'doi']
+    incoming_publications.columns = ['publication_id', 'author_list', 'topic_list', 'publication_year', 'doi']
 
     # publication id casted to string
-    incomming_publications.publication_id = incomming_publications.publication_id.astype(str)
+    incoming_publications.publication_id = incoming_publications.publication_id.astype(str)
 
     # author id extracted as list of strings
-    incomming_publications.author_list = incomming_publications.author_list.apply(lambda x: re.findall(r'\d+', x))
+    incoming_publications.author_list = incoming_publications.author_list.apply(lambda x: re.findall(r'\d+', x))
 
     # topic id extracted as list of strings
-    incomming_publications.topic_list = incomming_publications.topic_list.apply(lambda x: re.findall(r'\d+', x))    
+    incoming_publications.topic_list = incoming_publications.topic_list.apply(lambda x: re.findall(r'\d+', x))    
     
-    return incomming_publications
+    return incoming_publications
 
 
 def cleaned_authors_publications():
+    """ Delete authors with duplicated names and replace them in the publications authors list.
+    For authors with duplicated names, the ones with h-index is kept.
     
-    # get pre-processed authors, publications, and incomming_publications
+    """
+    
+    # get pre-processed authors, publications, and incoming_publications
     authors = get_authors()
     publications = get_publications()
-    incomming_publications = get_incomming_publications()
+    incoming_publications = get_incoming_publications()
 
     # duplicated authors
     duplicated = authors[authors.duplicated(['full_name'], keep=False)]
 
     # for each duplicated author: 
     # the author data record with highest h_index will be kept
-    # in the publication and the incomming_publications data, 
+    # in the publication and the incoming_publications data, 
     # the author_id with the remaining h_index will be replaced by the other one
     for name in set(duplicated.full_name):
     
@@ -163,19 +188,25 @@ def cleaned_authors_publications():
                                                                     list(map(lambda y:
                                                                             y.replace(id_to_remove, id_to_keep), x)))
 
-        # in incomming_publication data, author_id with the lowest h_inde is replaced 
-        incomming_publications.author_list = incomming_publications.author_list.apply(lambda x: 
+        # in incoming_publication data, author_id with the lowest h_inde is replaced 
+        incoming_publications.author_list = incoming_publications.author_list.apply(lambda x: 
                                                                                             list(map(lambda y:
                                                                                                     y.replace(id_to_remove, id_to_keep), x)))
 
-    return authors, publications, incomming_publications
+    return authors, publications, incoming_publications
 
 
 def load_authors(conn, authors):
-    """
+    """ Run the query to load the authors in the graph db.
     
+    Args.
+        conn (connection object) - Connection to run the query.
+        authors (Pandas DataFrame) - Authors to load. 
     
+    Return.
+        Number of authors loaded.
     """
+
     query = '''
             UNWIND $rows AS row
             MERGE (t: Author 
@@ -193,10 +224,16 @@ def load_authors(conn, authors):
 
 
 def load_topics(conn, topics):
-    """
+    """ Run the query to load the topics in the graph db.
     
+    Args.
+        conn (connection object) - Connection to run the query.
+        topics (Pandas DataFrame) - Topics to load. 
     
+    Return.
+        Number of topics loaded.
     """
+
     query = '''
             UNWIND $rows AS row
             MERGE (t: Topic 
@@ -212,9 +249,16 @@ def load_topics(conn, topics):
     
 
 def load_publications(conn, publications):
-    """
+    """ Run the query to load the publications in the graph db.
     
+    Args.
+        conn (connection object) - Connection to run the query.
+        publications (Pandas DataFrame) - Publications to load. 
+    
+    Return.
+        Number of publications loaded.
     """
+
     query = '''
             UNWIND $rows AS row
             MERGE (p: Publication 
@@ -249,11 +293,17 @@ def load_publications(conn, publications):
     return conn.query(query, parameters = {'rows':publications.to_dict('records')})
 
 
-def load_incomming_publications(conn, incomming_publications):
-    """
+def load_incoming_publications(conn, incoming_publications):
+    """ Run the query to load the incoming publications in the graph db.
     
+    Args.
+        conn (connection object) - Connection to run the query.
+        incoming_publications (Pandas DataFrame) - Incoming publications to load. 
     
+    Return.
+        Number of incoming publications loaded.
     """
+
     query = '''
             UNWIND $rows AS row
             MERGE (p: Publication 
@@ -285,15 +335,16 @@ def load_incomming_publications(conn, incomming_publications):
             
             RETURN count(distinct p) as total
             '''
-    return conn.query(query, parameters = {'rows':incomming_publications.to_dict('records')})
+    return conn.query(query, parameters = {'rows':incoming_publications.to_dict('records')})
 
 
 if __name__ == "__main__":
 
+    # creates the connection to the graph db.
     conn = Neo4jConnection()
 
-    # get cleaned authors, publications, and incomming publications
-    authors, publications, incomming_publications = cleaned_authors_publications() 
+    # get cleaned authors, publications, and incoming publications
+    authors, publications, incoming_publications = cleaned_authors_publications() 
 
     # load authors
     print("Loading Authors ...")
@@ -308,6 +359,6 @@ if __name__ == "__main__":
     print("Loading Publications ...")
     print(load_publications(conn, publications))
 
-    # load incomming publications
-    print("Loading Incomming Publications ...")
-    print(load_incomming_publications(conn, incomming_publications))
+    # load incoming publications
+    print("Loading Incoming Publications ...")
+    print(load_incoming_publications(conn, incoming_publications))
