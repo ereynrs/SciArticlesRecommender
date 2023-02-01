@@ -16,4 +16,14 @@ to load into Neo4j graph data is relevant included in publications, authors and 
 2. Clean the datasets up, considering , for example, possible duplicated authors.
 4. Recommend a group of people to review the incoming publications.
 5. Depict the more influential authors.
+
+## Folders and file structure
+* _Assignment for Knowledge Graph Engineer.pdf_ file depicting the assessment.
+* _assignment\_slideck.pdf_ file is the slide deck depicting the solution process.
+* _graphDB\_model.svg_ depicts the graph data model.
+* _data/_ folder. Contains the data CSV files.
+* _notebooks/_ folder. Contains the Jupyter notebooks:
+    * to perform initial data exploration (_exploration.ipynb_),
+    * to run the graph data science algorithms (_analysis.ipynb_)
+* _src/_ folder. Contains the Python script to load the data into the graph db (_etl_pandas.py_).
  
