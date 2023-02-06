@@ -1,9 +1,9 @@
 # README
 ## Overview
-Task is to process, transform, and load the input data into the Neo4j graph database.
-Using the cleaned and modelled data, you will disambiguate authors, make
-recommendations in terms of what authors could review the incoming publications and
-determine which are the most influential authors.
+Data is processed, transformed, and loaded into the Neo4j graph database.
+Using the cleaned and modelled data, authors are disambiguated, recommendations in terms of
+what authors could review the incoming publications are made, and the most influential authors are identified.
+
 The sample data files in CSV format:
 * publications.csv,
 * authors.csv,
